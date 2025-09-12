@@ -26,7 +26,7 @@ char* collect_sys_info(void) {
     char *out = malloc(cap);
     out[0] = '\0';
 
-    len += snprintf(out + len, cap - len);
+    len += snprintf(out + len, cap - len, "=== System & Network Info Collector (Linux) ===\n\n");
 
     for (size_t i = 0; i < sizeof(collectors)/sizeof(collectors[0]); i++) {
         char *val = collectors[i].collector();
