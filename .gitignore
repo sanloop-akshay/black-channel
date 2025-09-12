@@ -3,3 +3,16 @@ __pycache__
 .env
 server/
 binaries/
+main
+listener
+trigger
+*.o
+*.out
+*.a
+*.so
+*.dl
+*.d
+/build/
+bin/
+obj/
+mycollector
