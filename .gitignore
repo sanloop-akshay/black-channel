@@ -15,4 +15,4 @@ trigger
 /build/
 bin/
 obj/
-mycollector
+start-watch
