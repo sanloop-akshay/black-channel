@@ -1,21 +1,27 @@
-CC=gcc
-CFLAGS=-Wall -O2
-LIBS=-lcurl
+CC = gcc
+CFLAGS = -Wall -Wextra -Icollector -Itasks -Imonitor
+LIBS = -lcurl
 
-SRC=main.c \
-    collector/sys_info.c collector/utils.c \
-    collector/os_info.c collector/net_info.c collector/geo_info.c \
-    tasks/mailer.c \
-    monitor/listener.c
+OBJS_MAIN = main.o \
+            collector/sys_info.o collector/os_info.o collector/net_info.o \
+            collector/geo_info.o collector/utils.o \
+            tasks/mailer.o monitor/listener.o
 
-OBJ=$(SRC:.c=.o)
+OBJS_TRIGGER = monitor/trigger.o \
+               collector/sys_info.o collector/os_info.o collector/net_info.o \
+               collector/geo_info.o collector/utils.o \
+               tasks/mailer.o
 
-TARGET=black_channel
+all: black-channel trigger
 
-all: $(TARGET)
+black-channel: $(OBJS_MAIN)
+	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
-$(TARGET): $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $(OBJ) $(LIBS)
+trigger: $(OBJS_TRIGGER)
+	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJ) $(TARGET)
+	rm -f *.o collector/*.o tasks/*.o monitor/*.o black-channel trigger
