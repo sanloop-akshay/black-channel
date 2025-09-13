@@ -15,5 +15,7 @@ trigger
 /build/
 bin/
 obj/
-black_channel
 offline_reports
+listerner
+black-channel
+trigger
