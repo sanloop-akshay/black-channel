@@ -1,21 +1,21 @@
-CC = gcc
-CFLAGS = -Wall -O2
-BIN = start-watch
+CC=gcc
+CFLAGS=-Wall -O2
+LIBS=-lcurl
 
-SRC = main.c \
-      collector/sys_info.c \
-      collector/os_info.c \
-      collector/net_info.c \
-      collector/geo_info.c \
-      collector/utils.c \
-      tasks/mailer.c
+SRC=main.c \
+    collector/sys_info.c collector/utils.c \
+    collector/os_info.c collector/net_info.c collector/geo_info.c \
+    tasks/mailer.c \
+    monitor/listener.c
 
-OBJ = $(SRC:.c=.o)
+OBJ=$(SRC:.c=.o)
 
-all: $(BIN)
+TARGET=black_channel
 
-$(BIN): $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $(OBJ) -lcurl
+all: $(TARGET)
+
+$(TARGET): $(OBJ)
+	$(CC) $(CFLAGS) -o $@ $(OBJ) $(LIBS)
 
 clean:
-	rm -f $(OBJ) $(BIN)
+	rm -f $(OBJ) $(TARGET)
