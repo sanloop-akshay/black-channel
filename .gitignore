@@ -15,4 +15,5 @@ trigger
 /build/
 bin/
 obj/
-start-watch
+black_channel
+offline_reports
