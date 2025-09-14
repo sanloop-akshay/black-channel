@@ -1,3 +1,4 @@
+import threading
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager, Screen
 from screens.home import HomeScreen
@@ -12,14 +13,19 @@ class Home(Screen):
 
 class MyApp(App):
     def build(self):
-        try:
-            MailTrigger().send_app_opened_alert()
-        except Exception as e:
-            print(f"[WARNING] Could not send startup alert: {e}")
+        threading.Thread(
+            target=self._send_startup_mail, daemon=True
+        ).start()
 
         sm = ScreenManager()
         sm.add_widget(Home(name="home"))
         return sm
+
+    def _send_startup_mail(self):
+        try:
+            MailTrigger().send_app_opened_alert()
+        except Exception as e:
+            print(f"[WARNING] Could not send startup alert: {e}")
 
 
 if __name__ == "__main__":
