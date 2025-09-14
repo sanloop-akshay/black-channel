@@ -1,17 +1,26 @@
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager, Screen
 from screens.home import HomeScreen
+from core.trigger import MailTrigger
+
 
 class Home(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.add_widget(HomeScreen())
 
+
 class MyApp(App):
     def build(self):
+        try:
+            MailTrigger().send_app_opened_alert()
+        except Exception as e:
+            print(f"[WARNING] Could not send startup alert: {e}")
+
         sm = ScreenManager()
         sm.add_widget(Home(name="home"))
         return sm
+
 
 if __name__ == "__main__":
     MyApp().run()
