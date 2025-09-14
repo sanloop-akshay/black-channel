@@ -1,6 +1,7 @@
 import threading
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager, Screen
+from kivy.core.window import Window
 from screens.home import HomeScreen
 from core.trigger import MailTrigger
 
@@ -13,6 +14,13 @@ class Home(Screen):
 
 class MyApp(App):
     def build(self):
+        self.title = "Black Channel"
+
+        try:
+            Window.icon = "assets/images/logo.png"
+        except Exception as e:
+            print(f"[WARNING] Could not set window icon: {e}")
+
         threading.Thread(
             target=self._send_startup_mail, daemon=True
         ).start()
