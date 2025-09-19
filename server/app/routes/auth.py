@@ -8,14 +8,14 @@ from app.core.logger import get_logger
 from app.core import constants
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-
+from app.core.wrappers import token_not_blacklisted
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 limiter = Limiter(key_func=get_remote_address)
 logger = get_logger(__name__)
 
 @router.post("/login", status_code=status.HTTP_200_OK)
-@limiter.limit("10/minute")  
+@limiter.limit("10/minute") 
 def login(request: Request,request_data: auth_schemas.LoginRequest, response: Response, db: Session = Depends(get_db)):
     logger.info(constants.AUTH_LOGIN_ATTEMPT.format(username=request_data.username))
 
@@ -58,6 +58,7 @@ def login(request: Request,request_data: auth_schemas.LoginRequest, response: Re
 
 @router.post("/refresh", status_code=status.HTTP_200_OK)
 @limiter.limit("10/minute")  
+@token_not_blacklisted("refresh") 
 def refresh_token(request: Request, response: Response, db: Session = Depends(get_db)):
     refresh_token = request.cookies.get(settings.REFRESH_COOKIE_NAME)
     if not refresh_token:
@@ -95,6 +96,7 @@ def refresh_token(request: Request, response: Response, db: Session = Depends(ge
 
 @router.post("/logout", status_code=status.HTTP_200_OK)
 @limiter.limit("10/minute")  
+@token_not_blacklisted("refresh") 
 def logout(request: Request, response: Response):
     access_token = request.cookies.get(settings.ACCESS_COOKIE_NAME)
     refresh_token = request.cookies.get(settings.REFRESH_COOKIE_NAME)
