@@ -6,12 +6,17 @@ from app.services import auth_services
 from app.core.config import settings
 from app.core.logger import get_logger
 from app.core import constants
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from app.core.wrappers import token_not_blacklisted
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+limiter = Limiter(key_func=get_remote_address)
 logger = get_logger(__name__)
 
 @router.post("/login", status_code=status.HTTP_200_OK)
-def login(request_data: auth_schemas.LoginRequest, response: Response, db: Session = Depends(get_db)):
+@limiter.limit("10/minute") 
+def login(request: Request,request_data: auth_schemas.LoginRequest, response: Response, db: Session = Depends(get_db)):
     logger.info(constants.AUTH_LOGIN_ATTEMPT.format(username=request_data.username))
 
     user = auth_services.authenticate_user(db, request_data.username, request_data.password)
@@ -52,6 +57,8 @@ def login(request_data: auth_schemas.LoginRequest, response: Response, db: Sessi
 
 
 @router.post("/refresh", status_code=status.HTTP_200_OK)
+@limiter.limit("10/minute")  
+@token_not_blacklisted("refresh") 
 def refresh_token(request: Request, response: Response, db: Session = Depends(get_db)):
     refresh_token = request.cookies.get(settings.REFRESH_COOKIE_NAME)
     if not refresh_token:
@@ -85,4 +92,23 @@ def refresh_token(request: Request, response: Response, db: Session = Depends(ge
     return {
         "status": status.HTTP_200_OK,
         "message": "Access token refreshed successfully"
+    }
+
+@router.post("/logout", status_code=status.HTTP_200_OK)
+@limiter.limit("10/minute")  
+@token_not_blacklisted("refresh") 
+def logout(request: Request, response: Response):
+    access_token = request.cookies.get(settings.ACCESS_COOKIE_NAME)
+    refresh_token = request.cookies.get(settings.REFRESH_COOKIE_NAME)
+
+    auth_services.logout_user(access_token, refresh_token)
+
+    if access_token:
+        response.delete_cookie(settings.ACCESS_COOKIE_NAME)
+    if refresh_token:
+        response.delete_cookie(settings.REFRESH_COOKIE_NAME)
+
+    return {
+        "status": status.HTTP_200_OK,
+        "message": "Successfully logged out"
     }
