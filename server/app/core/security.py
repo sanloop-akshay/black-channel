@@ -3,6 +3,7 @@ from typing import Optional, Dict, Any
 from passlib.context import CryptContext
 from jose import jwt
 from app.core.config import settings
+from app.core.settings import redis_client
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -34,3 +35,9 @@ def create_refresh_token(subject: str, extra: Optional[Dict[str, Any]] = None) -
 
 def decode_token(token: str) -> Dict[str, Any]:
     return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+
+def blacklist_token(token: str, expire_seconds: int):
+    redis_client.set(token, "blacklisted", ex=expire_seconds)
+
+def is_token_blacklisted(token: str) -> bool:
+    return redis_client.exists(token) > 0
