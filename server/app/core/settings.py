@@ -9,3 +9,4 @@ redis_client = redis.Redis(
     decode_responses=True
 )
 
+storage_uri=f"redis://{redis_client.connection_pool.connection_kwargs['host']}:{redis_client.connection_pool.connection_kwargs['port']}/{redis_client.connection_pool.connection_kwargs['db']}"
