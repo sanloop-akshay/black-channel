@@ -6,7 +6,6 @@ logger = get_logger(__name__)
 
 app = FastAPI(title="Black-Channel")
 
-logger.info()
 Base.metadata.create_all(bind=engine) #Note
 
 app.include_router(auth_router.router)
