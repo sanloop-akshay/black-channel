@@ -6,7 +6,6 @@ from app.services import auth_services
 from app.core.config import settings
 from app.core.logger import get_logger
 from app.core import constants
-from app.core.security import blacklist_token
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = get_logger(__name__)
 
@@ -92,15 +91,12 @@ def logout(request: Request, response: Response):
     access_token = request.cookies.get(settings.ACCESS_COOKIE_NAME)
     refresh_token = request.cookies.get(settings.REFRESH_COOKIE_NAME)
 
-    if access_token:
-        blacklist_token(access_token, settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
-        response.delete_cookie(settings.ACCESS_COOKIE_NAME)
-        logger.info(constants.AUTH_ACCESS_TOKEN_BLACKLIST)
+    auth_services.logout_user(access_token, refresh_token)
 
+    if access_token:
+        response.delete_cookie(settings.ACCESS_COOKIE_NAME)
     if refresh_token:
-        blacklist_token(refresh_token, settings.REFRESH_TOKEN_EXPIRE_MINUTES * 60)
         response.delete_cookie(settings.REFRESH_COOKIE_NAME)
-        logger.info(constants.AUTH_ACCESS_TOKEN_BLACKLIST)
 
     return {
         "status": status.HTTP_200_OK,
