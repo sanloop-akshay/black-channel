@@ -31,7 +31,6 @@ def login_user(db: Session, user):
     access_token = security.create_access_token(str(user.id), extra={"username": user.username})
     refresh_token = security.create_refresh_token(str(user.id))
 
-    logger.info(f"Tokens generated for user: {user.username}")
     return {"access_token": access_token, "refresh_token": refresh_token, "user": user}
 
 
@@ -42,7 +41,6 @@ def refresh_access_token(db: Session, refresh_token: str):
             return None
         user_id = payload.get("sub")
     except JWTError as e:
-        logger.error(f"JWT decode error during refresh: {str(e)}")
         return None
 
     user = db.query(models.User).filter(models.User.id == user_id).first()
@@ -62,7 +60,7 @@ def logout_user(access_token: str = None, refresh_token: str = None):
                 blacklist_token(access_token, settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
                 logger.info(constants.AUTH_ACCESS_TOKEN_BLACKLIST)
         except JWTError:
-            logger.warning("Invalid access token, cannot blacklist")
+            logger.warning(constants.AUTH_INVALID_ACCESS_TOKEN_BLACKLIST)
 
     if refresh_token:
         try:
@@ -71,4 +69,4 @@ def logout_user(access_token: str = None, refresh_token: str = None):
                 blacklist_token(refresh_token, settings.REFRESH_TOKEN_EXPIRE_MINUTES * 60)
                 logger.info(constants.AUTH_REFRESH_TOKEN_BLACKLIST)
         except JWTError:
-            logger.warning("Invalid refresh token, cannot blacklist")
+            logger.warning(constants.AUTH_INVALID_REFRESH_TOKEN_BLACKLIST)
