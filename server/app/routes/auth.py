@@ -145,8 +145,8 @@ def verify_otp(request: Request,request_data: auth_schemas.VerifyOTPRequest, db:
 
 @router.post("/resend-otp")
 @limiter.limit("10/minute")  
-def resend_otp_endpoint(request: Request,request_data: auth_schemas.ResendOTPRequest):
-    response, error = auth_services.resend_otp(request_data.email)
+def resend_otp(request: Request,request_data: auth_schemas.ResendOTPRequest):
+    response, error = auth_services.resend_otp_code(request_data.email)
     if error:
         raise HTTPException(status_code=400, detail=error)
     return response

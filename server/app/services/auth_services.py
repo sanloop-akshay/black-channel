@@ -140,7 +140,7 @@ def verify_otp_and_create_user(db, email: str, otp: str):
     return new_user, None
 
 
-def resend_otp(email: str):
+def resend_otp_code(email: str):
 
     temp_user_json = redis_client.get(f"signup:{email}")
     if not temp_user_json:
