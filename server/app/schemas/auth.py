@@ -1,8 +1,5 @@
 # app/schemas/auth.py
-from pydantic import BaseModel, Field, constr
-from typing import Optional
-from uuid import UUID
-from datetime import datetime
+from pydantic import BaseModel, EmailStr, constr
 
 
 class LoginRequest(BaseModel):
@@ -10,3 +7,17 @@ class LoginRequest(BaseModel):
     password: constr(strip_whitespace=True, min_length=1)
 
 
+
+class SignupRequest(BaseModel):
+    username: str
+    password: str
+    email: EmailStr
+    
+    
+class VerifyOTPRequest(BaseModel):
+    email: EmailStr
+    otp: str
+    
+    
+class ResendOTPRequest(BaseModel):
+    email: EmailStr

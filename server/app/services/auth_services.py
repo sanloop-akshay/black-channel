@@ -7,8 +7,22 @@ from jose import JWTError
 from app.core.logger import get_logger
 from app.core import constants
 from app.core.security import blacklist_token
+import random
+from app.core.settings import redis_client
+from app.tasks.mailer_task import send_otp_email
+from datetime import timedelta
+import json
+from app.db.models import User
 
 logger = get_logger(__name__)
+def generate_otp(length: int = 6) -> str:
+
+    if length <= 0:
+        raise ValueError("OTP length must be greater than 0")
+    range_start = 10**(length - 1)
+    range_end = (10**length) - 1
+    return str(random.randint(range_start, range_end))
+
 
 def authenticate_user(db: Session, username: str, password: str):
 
@@ -70,3 +84,72 @@ def logout_user(access_token: str = None, refresh_token: str = None):
                 logger.info(constants.AUTH_REFRESH_TOKEN_BLACKLIST)
         except JWTError:
             logger.warning(constants.AUTH_INVALID_REFRESH_TOKEN_BLACKLIST)
+
+
+
+def signup_user(db, username: str, password: str, email: str):
+    existing_user = db.query(models.User).filter(models.User.username == username).first()
+    if existing_user:
+        return None  
+
+    hashed_password = security.hash_password(password)
+    otp = generate_otp()
+    
+    temp_user_data = {
+        "username": username,
+        "email": email,
+        "hashed_password": hashed_password
+    }
+    redis_client.setex(
+        f"signup:{email}",
+        timedelta(minutes=5),  
+        json.dumps(temp_user_data) 
+    )
+    redis_client.setex(f"otp:{username}", timedelta(minutes=5), otp)
+    send_otp_email.delay(email, otp)
+    return {"status": "pending_verification", "message": "OTP sent to your email"}
+
+
+def verify_otp_and_create_user(db, email: str, otp: str):
+
+    stored_otp = redis_client.get(f"otp:{email}")
+    if not stored_otp:
+        return None, "OTP expired or invalid"
+
+    if otp != stored_otp:
+        return None, "Incorrect OTP"
+
+    temp_user_json = redis_client.get(f"signup:{email}")
+    if not temp_user_json:
+        return None, "Kindly Signup First"
+
+    temp_user_data = json.loads(temp_user_json)
+
+    new_user = User(
+        username=temp_user_data["username"],
+        email=temp_user_data["email"],
+        hashed_password=temp_user_data["hashed_password"]
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    redis_client.delete(f"signup:{email}")
+    redis_client.delete(f"otp:{email}")
+
+    return new_user, None
+
+
+def resend_otp(email: str):
+
+    temp_user_json = redis_client.get(f"signup:{email}")
+    if not temp_user_json:
+        return None, "No pending signup found for this email"
+
+    otp = generate_otp()
+
+    redis_client.setex(f"otp:{email}", timedelta(minutes=5), otp)
+
+    send_otp_email.delay(email, otp)
+
+    return {"status": "pending_verification", "message": "OTP resent successfully"}, None

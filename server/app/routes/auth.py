@@ -112,3 +112,37 @@ def logout(request: Request, response: Response):
         "status": status.HTTP_200_OK,
         "message": "Successfully logged out"
     }
+    
+
+@router.post("/signup", status_code=status.HTTP_201_CREATED)
+def signup(request_data: auth_schemas.SignupRequest, db: Session = Depends(get_db)):
+    user = auth_services.signup_user(
+        db, 
+        request_data.username, 
+        request_data.password, 
+        request_data.email
+    )
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already exists"
+        )
+    return {"status": "pending_verification", "message": "OTP sent to your email"}
+
+
+@router.post("/verify-otp")
+def verify_otp(request_data: auth_schemas.VerifyOTPRequest, db: Session = Depends(get_db)):
+    user, error = auth_services.verify_otp_and_create_user(db, request_data.email, request_data.otp)
+    if error:
+        raise HTTPException(status_code=400, detail=error)
+
+    return {"status": "success", "message": "User verified and created successfully"}
+
+
+
+@router.post("/resend-otp")
+def resend_otp_endpoint(request_data: auth_schemas.ResendOTPRequest):
+    response, error = auth_services.resend_otp(request_data.email)
+    if error:
+        raise HTTPException(status_code=400, detail=error)
+    return response

@@ -15,6 +15,6 @@ trigger
 bin/
 obj/
 offline_reports
-listerner
 black-channel
-trigger
+pocs
+black-channel.log
