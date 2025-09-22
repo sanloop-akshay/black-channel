@@ -112,3 +112,19 @@ def logout(request: Request, response: Response):
         "status": status.HTTP_200_OK,
         "message": "Successfully logged out"
     }
+    
+
+@router.post("/signup", status_code=status.HTTP_201_CREATED)
+def signup(request_data: auth_schemas.SignupRequest, db: Session = Depends(get_db)):
+    user = auth_services.signup_user(
+        db, 
+        request_data.username, 
+        request_data.password, 
+        request_data.email
+    )
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already exists"
+        )
+    return {"status": "pending_verification", "message": "OTP sent to your email"}

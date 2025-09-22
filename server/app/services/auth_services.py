@@ -7,6 +7,10 @@ from jose import JWTError
 from app.core.logger import get_logger
 from app.core import constants
 from app.core.security import blacklist_token
+import random
+from app.core.settings import redis_client
+from tasks.mailer_task import send_otp_email
+from datetime import timedelta
 
 logger = get_logger(__name__)
 
@@ -70,3 +74,23 @@ def logout_user(access_token: str = None, refresh_token: str = None):
                 logger.info(constants.AUTH_REFRESH_TOKEN_BLACKLIST)
         except JWTError:
             logger.warning(constants.AUTH_INVALID_REFRESH_TOKEN_BLACKLIST)
+
+
+
+def signup_user(db, username: str, password: str, email: str):
+    existing_user = db.query(models.User).filter(models.User.username == username).first()
+    if existing_user:
+        return None  
+
+    hashed_password = security.hash_password(password)
+    new_user = models.User(username=username, hashed_password=hashed_password)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    otp = str(random.randint(100000, 999999))
+    redis_client.setex(f"otp:{new_user.id}", timedelta(minutes=5), otp)
+
+    send_otp_email.delay(email, otp)
+
+    return new_user
