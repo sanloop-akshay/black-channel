@@ -1,0 +1,8 @@
+2025-09-22 18:33:40,491 - sqlalchemy.engine.Engine - INFO - select pg_catalog.version()
+2025-09-22 18:33:40,492 - sqlalchemy.engine.Engine - INFO - [raw sql] {}
+2025-09-22 18:33:40,493 - sqlalchemy.engine.Engine - INFO - select current_schema()
+2025-09-22 18:33:40,493 - sqlalchemy.engine.Engine - INFO - [raw sql] {}
+2025-09-22 18:33:40,493 - sqlalchemy.engine.Engine - INFO - show standard_conforming_strings
+2025-09-22 18:33:40,493 - sqlalchemy.engine.Engine - INFO - [raw sql] {}
+2025-09-22 18:33:40,494 - sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+2025-09-22 18:33:40,494 - sqlalchemy.engine.Engine - INFO - COMMIT
