@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request,Cookie,status
 from sqlalchemy.orm import Session
 from app.schemas import auth as auth_schemas
 from app.db.database import get_db
@@ -8,7 +8,8 @@ from app.core.logger import get_logger
 from app.core import constants
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from app.core.wrappers import token_not_blacklisted
+from app.core.wrappers import token_not_blacklisted 
+from app.services import auth_services
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 limiter = Limiter(key_func=get_remote_address)
@@ -115,7 +116,8 @@ def logout(request: Request, response: Response):
     
 
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
-def signup(request_data: auth_schemas.SignupRequest, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")  
+def signup(request: Request,request_data: auth_schemas.SignupRequest, db: Session = Depends(get_db)):
     user = auth_services.signup_user(
         db, 
         request_data.username, 
@@ -131,7 +133,8 @@ def signup(request_data: auth_schemas.SignupRequest, db: Session = Depends(get_d
 
 
 @router.post("/verify-otp")
-def verify_otp(request_data: auth_schemas.VerifyOTPRequest, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")  
+def verify_otp(request: Request,request_data: auth_schemas.VerifyOTPRequest, db: Session = Depends(get_db)):
     user, error = auth_services.verify_otp_and_create_user(db, request_data.email, request_data.otp)
     if error:
         raise HTTPException(status_code=400, detail=error)
@@ -141,8 +144,11 @@ def verify_otp(request_data: auth_schemas.VerifyOTPRequest, db: Session = Depend
 
 
 @router.post("/resend-otp")
-def resend_otp_endpoint(request_data: auth_schemas.ResendOTPRequest):
-    response, error = auth_services.resend_otp(request_data.email)
+@limiter.limit("10/minute")  
+def resend_otp(request: Request,request_data: auth_schemas.ResendOTPRequest):
+    response, error = auth_services.resend_otp_code(request_data.email)
     if error:
         raise HTTPException(status_code=400, detail=error)
     return response
+
+
