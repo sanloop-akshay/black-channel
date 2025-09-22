@@ -9,8 +9,9 @@ from app.core import constants
 from app.core.security import blacklist_token
 import random
 from app.core.settings import redis_client
-from tasks.mailer_task import send_otp_email
+from app.tasks.mailer_task import send_otp_email
 from datetime import timedelta
+import json
 
 logger = get_logger(__name__)
 
@@ -83,14 +84,24 @@ def signup_user(db, username: str, password: str, email: str):
         return None  
 
     hashed_password = security.hash_password(password)
-    new_user = models.User(username=username, hashed_password=hashed_password)
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
 
     otp = str(random.randint(100000, 999999))
-    redis_client.setex(f"otp:{new_user.id}", timedelta(minutes=5), otp)
+    print(f"OTP for {username}: {otp}")
 
+    temp_user_data = {
+        "username": username,
+        "email": email,
+        "hashed_password": hashed_password
+    }
+    redis_client.setex(
+        f"signup:{username}",
+        timedelta(minutes=5),  
+        json.dumps(temp_user_data) 
+    )
+    
+
+    redis_client.setex(f"otp:{username}", timedelta(minutes=5), otp)
+    
     send_otp_email.delay(email, otp)
 
-    return new_user
+    return {"status": "pending_verification", "message": "OTP sent to your email"}

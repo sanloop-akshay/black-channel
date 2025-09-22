@@ -116,6 +116,7 @@ def logout(request: Request, response: Response):
 
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
 def signup(request_data: auth_schemas.SignupRequest, db: Session = Depends(get_db)):
+    print(request_data.dict())  # <--- debug
     user = auth_services.signup_user(
         db, 
         request_data.username, 

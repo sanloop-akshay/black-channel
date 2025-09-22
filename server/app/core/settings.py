@@ -1,4 +1,3 @@
-# app/core/settings.py or wherever you keep settings
 from celery import Celery
 from app.core.config import settings
 import redis
@@ -22,3 +21,4 @@ celery_app = Celery(
 celery_app.conf.task_routes = {
     "tasks.mailer_task.*": {"queue": "mail_queue"},
 }
+import app.tasks.mailer_task
