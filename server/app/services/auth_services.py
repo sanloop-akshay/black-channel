@@ -13,6 +13,38 @@ from app.tasks.mailer_task import send_otp_email
 from datetime import timedelta
 import json
 from app.db.models import User
+import re
+from fastapi import HTTPException, status
+
+def validate_password(password: str):
+    if len(password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters long"
+        )
+    
+    if not re.search(r"[A-Z]", password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one uppercase letter"
+        )
+    if not re.search(r"[a-z]", password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one lowercase letter"
+        )
+    if not re.search(r"[0-9]", password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one digit"
+        )
+    if not re.search(r"[@$!%*?&]", password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one special character (@$!%*?&)"
+        )
+    
+
 
 logger = get_logger(__name__)
 def generate_otp(length: int = 6) -> str:
@@ -91,7 +123,8 @@ def signup_user(db, username: str, password: str, email: str):
     existing_user = db.query(models.User).filter(models.User.username == username).first()
     if existing_user:
         return None  
-
+    
+    validate_password(password)
     hashed_password = security.hash_password(password)
     otp = generate_otp()
     
