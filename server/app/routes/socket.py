@@ -1,9 +1,10 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from uuid import uuid4
-from app.services.socket_services import check_room, add_client_to_room, remove_client_from_room
+import json
+from app.services.socket_services import check_room, add_client_to_room, remove_client_from_room,get_active_clients, add_active_client, remove_active_client, MAX_CLIENTS,websocket_connections
+from app.core.security import redis_client
 
 router = APIRouter()
-active_connections = {}
 
 @router.websocket("/ws/{room_id}")
 async def websocket_endpoint(websocket: WebSocket, room_id: str, password: str = Query(...)):
@@ -16,22 +17,30 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, password: str =
         await websocket.close()
         return
 
-    _, room = add_client_to_room(room_id, client_id)
+    active_clients = get_active_clients(room_id)
+    if len(active_clients) >= MAX_CLIENTS:
+        await websocket.send_text("Room full")
+        await websocket.close()
+        return
 
-    if room_id not in active_connections:
-        active_connections[room_id] = {}
-    active_connections[room_id][client_id] = websocket
+    _, room = add_client_to_room(room_id, client_id)
+    add_active_client(room_id, client_id)
+
+    if room_id not in websocket_connections:
+        websocket_connections[room_id] = {}
+    websocket_connections[room_id][client_id] = websocket
 
     await websocket.send_text(f"Connected to room {room_id} as {client_id}")
 
     try:
         while True:
             data = await websocket.receive_text()
-            for other_id, ws in active_connections[room_id].items():
+            for other_id, ws in websocket_connections.get(room_id, {}).items():
                 if other_id != client_id:
                     await ws.send_text(f"{client_id}: {data}")
     except WebSocketDisconnect:
         remove_client_from_room(room_id, client_id)
-        del active_connections[room_id][client_id]
-        if not active_connections[room_id]:
-            del active_connections[room_id]
+        remove_active_client(room_id, client_id)
+        del websocket_connections[room_id][client_id]
+        if not websocket_connections[room_id]:
+            del websocket_connections[room_id]
