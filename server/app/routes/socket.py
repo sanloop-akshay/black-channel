@@ -1,33 +1,37 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from app.services import socket_services
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from uuid import uuid4
+from app.services.socket_services import check_room, add_client_to_room, remove_client_from_room
 
-#Test Phase without Security
 router = APIRouter()
+active_connections = {}
 
-
-@router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+@router.websocket("/ws/{room_id}")
+async def websocket_endpoint(websocket: WebSocket, room_id: str, password: str = Query(...)):
     await websocket.accept()
-    room_id = None
+    client_id = str(uuid4())
+
+    valid, room_or_msg = check_room(room_id, password)
+    if not valid:
+        await websocket.send_text(f"Connection rejected: {room_or_msg}")
+        await websocket.close()
+        return
+
+    _, room = add_client_to_room(room_id, client_id)
+
+    if room_id not in active_connections:
+        active_connections[room_id] = {}
+    active_connections[room_id][client_id] = websocket
+
+    await websocket.send_text(f"Connected to room {room_id} as {client_id}")
 
     try:
-        data = await websocket.receive_json()
-        code = data.get("code")
-        if not code:
-            await websocket.close()
-            return
-
-        room_id, other_ws = await socket_services.register_user(code, websocket)
-
-        if room_id:
-            await websocket.send_json({"status": "connected"})
-            await other_ws.send_json({"status": "connected"})
-
         while True:
-            message_data = await websocket.receive_text()
-            if room_id:
-                await socket_services.broadcast_message(room_id, websocket, message_data)
-
+            data = await websocket.receive_text()
+            for other_id, ws in active_connections[room_id].items():
+                if other_id != client_id:
+                    await ws.send_text(f"{client_id}: {data}")
     except WebSocketDisconnect:
-        if room_id:
-            await socket_services.remove_user_from_room(room_id, websocket)
+        remove_client_from_room(room_id, client_id)
+        del active_connections[room_id][client_id]
+        if not active_connections[room_id]:
+            del active_connections[room_id]

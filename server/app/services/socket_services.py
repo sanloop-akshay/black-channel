@@ -1,30 +1,46 @@
-from fastapi import WebSocket
-from typing import Dict
+import json
+from app.core.security import redis_client
 
-#Test Phase
-pending_users: Dict[str, WebSocket] = {}
+MAX_CLIENTS = 2
 
-active_rooms: Dict[str, list] = {}
+def create_room(room_id: str, password: str):
+    if redis_client.exists(f"room:{room_id}"):
+        return False, "Room already exists"
+    room_data = {"password": password, "clients": []}
+    redis_client.set(f"room:{room_id}", json.dumps(room_data))
+    return True, "Room created"
 
-async def register_user(code: str, websocket: WebSocket):
+def check_room(room_id: str, password: str):
+    room_json = redis_client.get(f"room:{room_id}")
+    if not room_json:
+        return False, "Room does not exist"
 
-    if code in pending_users:
-        other_ws = pending_users.pop(code)
-        room_id = code 
-        active_rooms[room_id] = [other_ws, websocket]
-        return room_id, other_ws
-    else:
-        pending_users[code] = websocket
-        return None, None
+    room = json.loads(room_json)
 
-async def remove_user_from_room(room_id: str, websocket: WebSocket):
-    if room_id in active_rooms:
-        active_rooms[room_id] = [ws for ws in active_rooms[room_id] if ws != websocket]
-        if not active_rooms[room_id]:
-            del active_rooms[room_id]
+    if room["password"] != password:
+        return False, "Invalid password"
 
-async def broadcast_message(room_id: str, sender: WebSocket, message: str):
-    if room_id in active_rooms:
-        for ws in active_rooms[room_id]:
-            if ws != sender:
-                await ws.send_text(message)
+    if len(room["clients"]) >= MAX_CLIENTS:
+        return False, "Room full"
+
+    return True, room
+
+def add_client_to_room(room_id: str, client_id: str):
+    room_json = redis_client.get(f"room:{room_id}")
+    if not room_json:
+        return False, "Room not found"
+    room = json.loads(room_json)
+    if client_id not in room["clients"]:
+        room["clients"].append(client_id)
+        redis_client.set(f"room:{room_id}", json.dumps(room))
+    return True, room
+
+def remove_client_from_room(room_id: str, client_id: str):
+    room_json = redis_client.get(f"room:{room_id}")
+    if not room_json:
+        return False, "Room not found"
+    room = json.loads(room_json)
+    if client_id in room["clients"]:
+        room["clients"].remove(client_id)
+        redis_client.set(f"room:{room_id}", json.dumps(room))
+    return True, room
