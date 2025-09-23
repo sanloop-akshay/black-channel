@@ -4,6 +4,7 @@ from app.services import socket_services
 #Test Phase without Security
 router = APIRouter()
 
+
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()

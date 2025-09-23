@@ -13,7 +13,13 @@ logger = get_logger(__name__)
 
 limiter = Limiter(key_func=get_remote_address, storage_uri=uri)
 
-app = FastAPI(title="Black-Channel")
+app = FastAPI(
+    title="Black-Channel",
+    docs_url=None,  
+    redoc_url=None,  
+    openapi_url=None
+)
+
 app.state.limiter = limiter
 app.add_exception_handler(429, _rate_limit_exceeded_handler)
 
@@ -23,3 +29,14 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base.metadata.create_all(bind=engine)
 
 app.include_router(auth_router.router)
+
+@app.get("/")
+def black_channel():
+    return {
+        "author"      : "S-A",
+        "message"     : "Black Channel's Drop",
+        "version"     : "1.0.0",
+        "description" : "A Linux Monitor with Secure Socket Channel.",
+        "github"      : "https://github.com/sanloop-akshay/black-channel",
+        "open-source" : True
+        }
