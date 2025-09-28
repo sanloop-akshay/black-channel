@@ -1,8 +1,11 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from uuid import uuid4
 import json
-from app.services.socket_services import check_room, add_client_to_room, remove_client_from_room,get_active_clients, add_active_client, remove_active_client, MAX_CLIENTS,websocket_connections
-from app.core.security import redis_client
+from app.services.socket_services import (
+    check_room, add_client_to_room, remove_client_from_room,
+    get_active_clients, add_active_client, remove_active_client,
+    MAX_CLIENTS, websocket_connections, create_room
+)
 
 router = APIRouter()
 
@@ -13,7 +16,20 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, password: str =
 
     valid, room_or_msg = check_room(room_id, password)
     if not valid:
-        await websocket.send_text(f"Connection rejected: {room_or_msg}")
+        if room_or_msg == "Room does not exist":
+            created, msg = create_room(room_id, password)
+            if not created:
+                await websocket.send_text(f"Connection rejected: {msg}")
+                await websocket.close()
+                return
+        else:
+            await websocket.send_text(f"Connection rejected: {room_or_msg}")
+            await websocket.close()
+            return
+
+    valid, room = check_room(room_id, password)
+    if not valid:
+        await websocket.send_text(f"Connection rejected: {room}")
         await websocket.close()
         return
 
@@ -38,6 +54,7 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, password: str =
             for other_id, ws in websocket_connections.get(room_id, {}).items():
                 if other_id != client_id:
                     await ws.send_text(f"{client_id}: {data}")
+
     except WebSocketDisconnect:
         remove_client_from_room(room_id, client_id)
         remove_active_client(room_id, client_id)

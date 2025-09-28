@@ -1,11 +1,11 @@
 import json
 from app.core.security import redis_client
 
-
 websocket_connections = {} 
 
 REDIS_ACTIVE_KEY = "active_connections" 
 MAX_CLIENTS = 2
+
 
 def get_active_clients(room_id: str):
     data = redis_client.hget(REDIS_ACTIVE_KEY, room_id)
@@ -25,6 +25,8 @@ def remove_active_client(room_id: str, client_id: str):
             redis_client.hset(REDIS_ACTIVE_KEY, room_id, json.dumps(clients))
         else:
             redis_client.hdel(REDIS_ACTIVE_KEY, room_id)
+
+# ------------------- Room Handling -------------------
 
 def create_room(room_id: str, password: str):
     if redis_client.exists(f"room:{room_id}"):
