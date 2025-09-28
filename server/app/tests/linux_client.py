@@ -1,13 +1,13 @@
 import asyncio
 import websockets
 
-ROOM_ID = "room1"
-PASSWORD = "mypassword"
-URL = f"ws://localhost:8000/ws/{ROOM_ID}?password={PASSWORD}"
+def create_client(room_id: str, password: str, host: str = "localhost", port: int = 8000):
+    return f"ws://{host}:{port}/ws/{room_id}?password={password}"
 
 async def send_messages(ws):
+    loop = asyncio.get_event_loop()
     while True:
-        msg = await asyncio.get_event_loop().run_in_executor(None, input, "")
+        msg = await loop.run_in_executor(None, input, "")
         await ws.send(msg)
 
 async def receive_messages(ws):
@@ -19,18 +19,24 @@ async def receive_messages(ws):
             print("Connection closed")
             break
 
-async def main():
-    async with websockets.connect(URL) as ws:
-        response = await ws.recv()
-        print(response)
+async def connect_client(room_id: str, password: str):
+    url = create_client(room_id, password)
+    try:
+        async with websockets.connect(url) as ws:
+            response = await ws.recv()
+            print(response)
 
-        if "Connection rejected" in response:
-            return
+            if "Connection rejected" in response:
+                return
 
-        # Run send and receive concurrently
-        await asyncio.gather(
-            send_messages(ws),
-            receive_messages(ws)
-        )
+            await asyncio.gather(
+                send_messages(ws),
+                receive_messages(ws)
+            )
+    except Exception as e:
+        print(f"Failed to connect: {e}")
 
-asyncio.run(main())
+if __name__ == "__main__":
+    ROOM_ID = input("Enter room name: ")
+    PASSWORD = input("Enter password: ")
+    asyncio.run(connect_client(ROOM_ID, PASSWORD))
